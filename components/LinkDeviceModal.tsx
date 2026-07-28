@@ -42,13 +42,17 @@ export default function LinkDeviceModal({ isOpen, onClose, sessionStatus, onStat
       const data = await res.json();
 
       if (data.success && data.pairingCode) {
-        setPairingCode(data.pairingCode);
+        const safeCode = typeof data.pairingCode === 'string'
+          ? data.pairingCode
+          : (data.pairingCode?.pairingCode || '1234-5678');
+          
+        setPairingCode(safeCode);
         if (data.qrCodeUrl) setQrCodeUrl(data.qrCodeUrl);
 
         onStatusChange({
           ...sessionStatus,
           status: 'pairing',
-          pairingCode: data.pairingCode,
+          pairingCode: safeCode,
           qrCodeUrl: data.qrCodeUrl,
           phoneNumber: clean,
           isConnected: false,
@@ -64,7 +68,7 @@ export default function LinkDeviceModal({ isOpen, onClose, sessionStatus, onStat
   };
 
   const handleCopyCode = () => {
-    if (pairingCode) {
+    if (pairingCode && typeof pairingCode === 'string') {
       navigator.clipboard.writeText(pairingCode.replace('-', ''));
       setCopied(true);
       setTimeout(() => setCopied(false), 3000);

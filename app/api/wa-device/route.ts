@@ -32,12 +32,15 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Phone number is required' }, { status: 400 });
       }
 
-      const pairingCode = await requestWhatsAppPairingCode(phoneNumber);
+      const result = await requestWhatsAppPairingCode(phoneNumber);
       const status = getSessionStatus();
+      const codeStr = typeof result === 'string' ? result : result.pairingCode;
+      const qrUrl = typeof result === 'object' ? result.qrCodeUrl : undefined;
 
       return NextResponse.json({
         success: true,
-        pairingCode,
+        pairingCode: codeStr,
+        qrCodeUrl: qrUrl,
         status: status.status,
       });
     }
