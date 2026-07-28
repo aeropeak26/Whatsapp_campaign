@@ -14,7 +14,7 @@ import RepliesInbox from '@/components/RepliesInbox';
 import SavedTemplates from '@/components/SavedTemplates';
 import CampaignHistory from '@/components/CampaignHistory';
 import DatabaseSetupBanner from '@/components/DatabaseSetupBanner';
-import { WASessionStatus } from '@/lib/wa-baileys';
+import { WASessionStatus } from '@/lib/types';
 import { WhatsAppConfig } from '@/lib/whatsapp';
 
 export default function Home() {

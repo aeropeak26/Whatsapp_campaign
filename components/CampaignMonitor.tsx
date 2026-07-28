@@ -7,7 +7,7 @@ import { ParsedContact } from './ContactUploader';
 import { WhatsAppConfig } from '@/lib/whatsapp';
 import { supabase } from '@/lib/supabase';
 
-import { LinkedDeviceState } from '@/lib/wa-device';
+import { LinkedDeviceState } from '@/lib/types';
 
 interface CampaignMonitorProps {
   contacts: ParsedContact[];

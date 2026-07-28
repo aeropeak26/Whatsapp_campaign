@@ -7,15 +7,9 @@ import makeWASocket, {
 import QRCode from 'qrcode';
 import path from 'path';
 import { supabase } from './supabase';
+import { WASessionStatus } from './types';
 
-export interface WASessionStatus {
-  isConnected: boolean;
-  status: 'disconnected' | 'connecting' | 'pairing' | 'connected';
-  phoneNumber?: string;
-  pairingCode?: string;
-  qrCodeUrl?: string;
-  error?: string;
-}
+export type { WASessionStatus };
 
 let activeSocket: any = null;
 let currentSessionStatus: WASessionStatus = {

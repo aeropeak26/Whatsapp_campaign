@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { MessageSquare, Database, Sparkles, Smartphone, KeyRound } from 'lucide-react';
-import { WASessionStatus } from '@/lib/wa-baileys';
+import { WASessionStatus } from '@/lib/types';
 
 interface HeaderProps {
   onOpenLinkDevice: () => void;

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { X, Smartphone, CheckCircle2, RefreshCw, Unlink, KeyRound, Copy, Check, QrCode, ArrowRight, Sparkles } from 'lucide-react';
-import { WASessionStatus } from '@/lib/wa-baileys';
+import { WASessionStatus } from '@/lib/types';
 
 interface LinkDeviceModalProps {
   isOpen: boolean;
