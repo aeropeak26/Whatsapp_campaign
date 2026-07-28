@@ -22,21 +22,7 @@ const config: Config = {
           900: '#125c31',
           950: '#043419',
         },
-        dark: {
-          bg: '#0B0F19',
-          card: '#111827',
-          hover: '#1F2937',
-          border: '#374151',
-        }
       },
-      backgroundImage: {
-        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
-        "gradient-conic":
-          "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
-      },
-      animation: {
-        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-      }
     },
   },
   plugins: [],

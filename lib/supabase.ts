@@ -43,3 +43,13 @@ export interface SendLog {
   error?: string;
   timestamp: string;
 }
+
+export interface InboundReply {
+  id?: string;
+  phone: string;
+  contact_name?: string;
+  message_body: string;
+  whatsapp_message_id?: string;
+  received_at: string;
+  is_read?: boolean;
+}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Database, Code, Check, Copy, ChevronDown, ChevronUp } from 'lucide-react';
+import { Database, Check, Copy, ChevronDown, ChevronUp } from 'lucide-react';
 
 const SQL_SCRIPT = `-- Run this script in your Supabase SQL Editor (vwjbrdglihwdjspetmge.supabase.co)
 
@@ -34,14 +34,25 @@ CREATE TABLE IF NOT EXISTS public.logs (
     timestamp TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Enable RLS and public permissions
+CREATE TABLE IF NOT EXISTS public.inbound_replies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    phone TEXT NOT NULL,
+    contact_name TEXT,
+    message_body TEXT NOT NULL,
+    whatsapp_message_id TEXT,
+    received_at TIMESTAMPTZ DEFAULT NOW(),
+    is_read BOOLEAN DEFAULT false
+);
+
 ALTER TABLE public.campaigns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.inbound_replies ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow public read write on campaigns" ON public.campaigns FOR ALL USING (true);
 CREATE POLICY "Allow public read write on templates" ON public.templates FOR ALL USING (true);
 CREATE POLICY "Allow public read write on logs" ON public.logs FOR ALL USING (true);
+CREATE POLICY "Allow public read write on inbound_replies" ON public.inbound_replies FOR ALL USING (true);
 `;
 
 export default function DatabaseSetupBanner() {
@@ -55,16 +66,16 @@ export default function DatabaseSetupBanner() {
   };
 
   return (
-    <div className="glass-panel rounded-2xl p-4 border border-emerald-800/40 bg-emerald-950/20 text-xs">
+    <div className="bg-emerald-50/80 rounded-2xl p-4 border border-emerald-200 text-xs">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+          <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-bold shadow-sm">
             <Database className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="font-bold text-white">Supabase Schema &amp; Table Setup</h3>
-            <p className="text-gray-400 text-[11px]">
-              Connected to project <span className="font-mono text-emerald-400">vwjbrdglihwdjspetmge</span>
+            <h3 className="font-bold text-slate-900">Supabase Schema &amp; Table Setup</h3>
+            <p className="text-slate-500 text-[11px]">
+              Connected to project <span className="font-mono text-emerald-700 font-bold">vwjbrdglihwdjspetmge</span>
             </p>
           </div>
         </div>
@@ -72,11 +83,11 @@ export default function DatabaseSetupBanner() {
         <div className="flex items-center space-x-2">
           <button
             onClick={handleCopySql}
-            className="px-3 py-1.5 bg-emerald-900/40 hover:bg-emerald-800/60 text-emerald-300 font-semibold rounded-lg border border-emerald-700/50 transition flex items-center space-x-1.5"
+            className="px-3.5 py-1.5 bg-white hover:bg-emerald-100 text-emerald-800 font-bold rounded-xl border border-emerald-300 shadow-2xs transition flex items-center space-x-1.5"
           >
             {copied ? (
               <>
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
                 <span>SQL Copied!</span>
               </>
             ) : (
@@ -89,7 +100,7 @@ export default function DatabaseSetupBanner() {
 
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-gray-800 transition"
+            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg transition"
           >
             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
@@ -97,11 +108,11 @@ export default function DatabaseSetupBanner() {
       </div>
 
       {isExpanded && (
-        <div className="mt-3 pt-3 border-t border-emerald-900/40 space-y-2">
-          <p className="text-gray-300 text-[11px]">
-            Run the SQL snippet below in your Supabase Dashboard &gt; SQL Editor to enable automatic campaign logging &amp; saved template storage:
+        <div className="mt-3 pt-3 border-t border-emerald-200/80 space-y-2">
+          <p className="text-slate-600 text-[11px]">
+            Run the SQL snippet below in your Supabase Dashboard &gt; SQL Editor to set up tables (`campaigns`, `templates`, `logs`, `inbound_replies`):
           </p>
-          <pre className="p-3 bg-gray-950/80 rounded-xl border border-gray-800 text-[10px] font-mono text-emerald-300 overflow-x-auto max-h-48 leading-normal">
+          <pre className="p-3.5 bg-slate-900 rounded-xl text-[10px] font-mono text-emerald-400 overflow-x-auto max-h-48 leading-relaxed">
             {SQL_SCRIPT}
           </pre>
         </div>

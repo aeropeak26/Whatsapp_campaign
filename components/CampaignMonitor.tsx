@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, Download, CheckCircle2, XCircle, Clock, AlertTriangle, Send, Loader2, Sparkles } from 'lucide-react';
+import { Play, Pause, RotateCcw, Download, CheckCircle2, XCircle, Clock, Send, Loader2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { ParsedContact } from './ContactUploader';
 import { WhatsAppConfig } from '@/lib/whatsapp';
@@ -50,7 +50,6 @@ export default function CampaignMonitor({
   const isSendingRef = useRef(false);
   const isPausedRef = useRef(false);
 
-  // Sync contacts to statuses when target contacts change
   useEffect(() => {
     if (!isSending) {
       setStatuses(
@@ -81,11 +80,10 @@ export default function CampaignMonitor({
     isSendingRef.current = true;
     isPausedRef.current = false;
 
-    // Create campaign record in Supabase DB if available
     let newCampaignId = campaignId;
     try {
       if (supabase) {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('campaigns')
           .insert([
             {
@@ -106,10 +104,9 @@ export default function CampaignMonitor({
         }
       }
     } catch (e) {
-      console.warn('Supabase campaign insert skipped:', e);
+      console.warn(e);
     }
 
-    // Execute sequential message dispatch loop
     for (let i = 0; i < statuses.length; i++) {
       if (!isSendingRef.current) break;
 
@@ -121,18 +118,12 @@ export default function CampaignMonitor({
       const item = statuses[i];
       if (item.status === 'sent') continue;
 
-      // Mark current item as sending
       setStatuses((prev) =>
         prev.map((s, idx) => (idx === i ? { ...s, status: 'sending' } : s))
       );
 
-      // Prepare text body with parameters if present
       let textBody = messageText;
-      if (item.name) {
-        textBody = textBody.replace(/\{name\}/gi, item.name);
-      } else {
-        textBody = textBody.replace(/\{name\}/gi, 'Customer');
-      }
+      textBody = textBody.replace(/\{name\}/gi, item.name || 'Customer');
       textBody = textBody.replace(/\{phone\}/gi, `+${item.phone}`);
 
       try {
@@ -152,7 +143,6 @@ export default function CampaignMonitor({
         });
 
         const result = await response.json();
-
         const timeStr = new Date().toLocaleTimeString();
 
         if (result.success) {
@@ -181,7 +171,6 @@ export default function CampaignMonitor({
         );
       }
 
-      // Delay interval between messages to respect API limits & prevent spam flags
       if (i < statuses.length - 1 && delaySeconds > 0) {
         await new Promise((res) => setTimeout(res, delaySeconds * 1000));
       }
@@ -190,13 +179,8 @@ export default function CampaignMonitor({
     setIsSending(false);
     isSendingRef.current = false;
 
-    // Trigger confetti celebration if campaign finished with sent items
     if (sentCount > 0) {
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-      });
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
     }
   };
 
@@ -240,34 +224,33 @@ export default function CampaignMonitor({
   };
 
   return (
-    <div className="glass-panel rounded-2xl p-5 border border-gray-800 space-y-4">
-      {/* Title & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-800 pb-3">
+    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+      {/* Title & Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
         <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-lg bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-400">
+          <div className="w-9 h-9 rounded-xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-600">
             <Send className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-white">Campaign Launcher & Monitor</h2>
-            <p className="text-xs text-gray-400">Execute bulk dispatch with real-time tracking</p>
+            <h2 className="text-base font-bold text-slate-900">Campaign Execution Monitor</h2>
+            <p className="text-xs text-slate-500">Execute bulk dispatch with real-time progress</p>
           </div>
         </div>
 
-        {/* Dispatch & Pause Action Buttons */}
         <div className="flex items-center space-x-2">
           {!isSending ? (
             <button
               onClick={handleStartCampaign}
               disabled={validContacts.length === 0}
-              className="px-5 py-2.5 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-brand-500/20 transition flex items-center space-x-2"
+              className="px-5 py-2.5 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md shadow-brand-500/20 transition flex items-center space-x-2"
             >
               <Play className="w-4 h-4 fill-current" />
-              <span>Start WhatsApp Blast ({validContacts.length})</span>
+              <span>Send WhatsApp Messages ({validContacts.length})</span>
             </button>
           ) : (
             <button
               onClick={handlePause}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-md transition flex items-center space-x-1.5"
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center space-x-1.5"
             >
               <Pause className="w-4 h-4 fill-current" />
               <span>{isPaused ? 'Resume' : 'Pause'}</span>
@@ -277,8 +260,8 @@ export default function CampaignMonitor({
           <button
             onClick={handleReset}
             disabled={isSending && !isPaused}
-            className="p-2.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 rounded-xl border border-gray-700 transition"
-            title="Reset Campaign Queue"
+            className="p-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 rounded-xl border border-slate-200 transition"
+            title="Reset Queue"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
@@ -286,20 +269,20 @@ export default function CampaignMonitor({
           {statuses.length > 0 && (
             <button
               onClick={handleExportCSV}
-              className="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold rounded-xl border border-gray-700 transition flex items-center space-x-1.5"
+              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 transition flex items-center space-x-1.5"
             >
-              <Download className="w-4 h-4 text-brand-400" />
-              <span className="hidden sm:inline">Export CSV</span>
+              <Download className="w-4 h-4 text-brand-600" />
+              <span>Export CSV</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Delay Interval Settings */}
-      <div className="flex items-center justify-between bg-gray-900/70 p-3 rounded-xl border border-gray-800 text-xs text-gray-300">
+      {/* Delay Interval */}
+      <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-700">
         <div className="flex items-center space-x-2">
-          <Clock className="w-4 h-4 text-brand-400" />
-          <span>Anti-Spam Delay Interval: <strong>{delaySeconds} second(s)</strong> between messages</span>
+          <Clock className="w-4 h-4 text-brand-600" />
+          <span>Anti-Spam Delay: <strong>{delaySeconds} second(s)</strong> between dispatches</span>
         </div>
         <input
           type="range"
@@ -311,33 +294,33 @@ export default function CampaignMonitor({
         />
       </div>
 
-      {/* Progress Bar & Counters */}
+      {/* Progress */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs font-semibold">
-          <span className="text-gray-300 flex items-center space-x-1.5">
-            {isSending && <Loader2 className="w-3.5 h-3.5 text-brand-400 animate-spin" />}
+        <div className="flex items-center justify-between text-xs font-bold">
+          <span className="text-slate-700 flex items-center space-x-1.5">
+            {isSending && <Loader2 className="w-3.5 h-3.5 text-brand-600 animate-spin" />}
             <span>Progress: {progressPercent}%</span>
           </span>
           <div className="flex items-center space-x-3">
-            <span className="text-emerald-400">Sent: {sentCount}</span>
-            <span className="text-rose-400">Failed: {failedCount}</span>
-            <span className="text-gray-400">Total: {totalCount}</span>
+            <span className="text-emerald-600">Sent: {sentCount}</span>
+            <span className="text-rose-600">Failed: {failedCount}</span>
+            <span className="text-slate-500">Total: {totalCount}</span>
           </div>
         </div>
 
-        <div className="w-full h-2.5 bg-gray-900 rounded-full overflow-hidden border border-gray-800">
+        <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
           <div
-            className="h-full bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-400 transition-all duration-300"
+            className="h-full bg-brand-500 transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
           ></div>
         </div>
       </div>
 
-      {/* Live Dispatch Log Table */}
-      <div className="border border-gray-800 rounded-xl overflow-hidden bg-gray-900/60">
+      {/* Dispatch Log Table */}
+      <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
         <div className="max-h-64 overflow-y-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-gray-800/80 text-gray-400 font-semibold sticky top-0 uppercase tracking-wider border-b border-gray-700">
+            <thead className="bg-slate-50 text-slate-500 font-bold sticky top-0 uppercase tracking-wider border-b border-slate-200">
               <tr>
                 <th className="px-4 py-2.5">Recipient</th>
                 <th className="px-4 py-2.5">Status</th>
@@ -345,59 +328,55 @@ export default function CampaignMonitor({
                 <th className="px-4 py-2.5 text-right">Time</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800/60">
+            <tbody className="divide-y divide-slate-100">
               {statuses.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-gray-500 italic">
-                    No contacts loaded. Paste recipient numbers above to launch your campaign.
+                  <td colSpan={4} className="px-4 py-6 text-center text-slate-400 italic">
+                    No contacts in queue. Add phone numbers above to send messages.
                   </td>
                 </tr>
               ) : (
                 statuses.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-gray-800/40 transition">
-                    <td className="px-4 py-2 font-mono text-gray-200">
+                  <tr key={idx} className="hover:bg-slate-50 transition">
+                    <td className="px-4 py-2 font-mono text-slate-900 font-semibold">
                       +{item.phone}
-                      {item.name && <span className="text-gray-400 text-[11px] ml-1">({item.name})</span>}
+                      {item.name && <span className="text-slate-500 text-[11px] ml-1">({item.name})</span>}
                     </td>
 
                     <td className="px-4 py-2">
                       {item.status === 'pending' && (
-                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-800 text-gray-400 border border-gray-700">
-                          <Clock className="w-3 h-3" />
-                          <span>Pending</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                          Pending
                         </span>
                       )}
                       {item.status === 'sending' && (
-                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-950/60 text-amber-300 border border-amber-800/40 animate-pulse">
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          <span>Sending</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
+                          Sending
                         </span>
                       )}
                       {item.status === 'sent' && (
-                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-950/60 text-emerald-400 border border-emerald-800/40">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>Sent</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          Sent
                         </span>
                       )}
                       {item.status === 'failed' && (
-                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-950/60 text-rose-400 border border-rose-800/40">
-                          <XCircle className="w-3 h-3" />
-                          <span>Failed</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                          Failed
                         </span>
                       )}
                     </td>
 
-                    <td className="px-4 py-2 text-gray-400 max-w-xs truncate font-mono text-[11px]">
+                    <td className="px-4 py-2 text-slate-600 max-w-xs truncate font-mono text-[11px]">
                       {item.messageId ? (
-                        <span className="text-brand-300">{item.messageId}</span>
+                        <span className="text-brand-700 font-semibold">{item.messageId}</span>
                       ) : item.error ? (
-                        <span className="text-rose-400">{item.error}</span>
+                        <span className="text-rose-600">{item.error}</span>
                       ) : (
                         '-'
                       )}
                     </td>
 
-                    <td className="px-4 py-2 text-right text-gray-500 font-mono text-[11px]">
+                    <td className="px-4 py-2 text-right text-slate-400 font-mono text-[11px]">
                       {item.time || '-'}
                     </td>
                   </tr>
