@@ -4,6 +4,7 @@ import {
   requestWhatsAppPairingCode,
   confirmPairingConnected,
   disconnectWASession,
+  sendRealTimeWhatsAppMessage,
 } from '@/lib/wa-baileys';
 import { cleanPhoneNumber } from '@/lib/whatsapp';
 import { supabase } from '@/lib/supabase';
@@ -59,14 +60,6 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'send_message') {
-      const session = getSessionStatus();
-      if (!session.isConnected) {
-        return NextResponse.json({
-          success: false,
-          error: 'No WhatsApp device linked. Please link your phone number first.',
-        }, { status: 400 });
-      }
-
       const cleanRecipient = cleanPhoneNumber(recipientPhone);
       if (!cleanRecipient) {
         return NextResponse.json({
@@ -75,17 +68,17 @@ export async function POST(req: NextRequest) {
         }, { status: 400 });
       }
 
-      const messageId = `3EB0${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+      const result = await sendRealTimeWhatsAppMessage(cleanRecipient, messageText || '');
 
       // Insert delivery log into Supabase if available
       try {
-        if (supabase) {
+        if (supabase && result.success) {
           await supabase.from('logs').insert([
             {
               campaign_id: campaignId || null,
               phone: cleanRecipient,
               status: 'sent',
-              message_id: messageId,
+              message_id: result.messageId,
               timestamp: new Date().toISOString(),
             },
           ]);
@@ -94,11 +87,7 @@ export async function POST(req: NextRequest) {
         console.warn('Supabase log insert skipped:', dbErr);
       }
 
-      return NextResponse.json({
-        success: true,
-        messageId,
-        sentFrom: session.phoneNumber,
-      });
+      return NextResponse.json(result);
     }
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
