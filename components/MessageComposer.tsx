@@ -17,7 +17,34 @@ interface MessageComposerProps {
   onTemplateParamsChange: (params: string[]) => void;
 }
 
+export const AEROPEAK_DEFAULT_MESSAGE = `Hi 👋,
+
+I'm *Jayaprakash* from *AeroPeak* .
+
+I came across your business and thought a professional website could help you attract more customers, build trust, and grow your online presence.
+
+We specialize in:
+🌐 Business Websites
+🛒 E-commerce Websites
+📱 Mobile App Development
+🎨 UI/UX Design
+🔧 Website Maintenance
+
+You can learn more about our company and services here:
+🌐 https://aeropeak.tech
+
+If you're planning to build a new website or improve your existing one, I'd be happy to discuss your requirements and suggest the best solution.
+
+Looking forward to hearing from you.
+
+*AeroPeak*
+Developing Ideas. Delivering Impact.`;
+
 const PRESET_TEMPLATES = [
+  {
+    title: '🚀 AeroPeak Services Outreach',
+    content: AEROPEAK_DEFAULT_MESSAGE,
+  },
   {
     title: '🔥 Promotional Offer',
     content: 'Hello {name}! 🎉 Get 20% OFF on all services today only. Use code SPECIAL20. Claim now!',
@@ -25,10 +52,6 @@ const PRESET_TEMPLATES = [
   {
     title: '📅 Appointment Reminder',
     content: 'Hi {name}, this is a quick reminder for your appointment tomorrow at 10:00 AM. Reply YES to confirm.',
-  },
-  {
-    title: '📦 Order Status Update',
-    content: 'Dear Customer, your order #{1} has been shipped! Track your package here: https://example.com/track',
   },
 ];
 
@@ -80,8 +103,8 @@ export default function MessageComposer({
             <Edit3 className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-900">Campaign Message</h2>
-            <p className="text-xs text-slate-500">Compose text message or choose Meta Template</p>
+            <h2 className="text-base font-bold text-slate-900">Campaign Message Copy</h2>
+            <p className="text-xs text-slate-500">Edit custom message or choose approved Meta template</p>
           </div>
         </div>
 
@@ -133,21 +156,15 @@ export default function MessageComposer({
             >
               + &#123;phone&#125;
             </button>
-            <button
-              onClick={() => handleInsertVariable('{{1}}')}
-              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-brand-700 font-bold rounded-lg border border-slate-200 font-mono transition"
-            >
-              + &#123;&#123;1&#125;&#125;
-            </button>
           </div>
 
           <div className="relative">
             <textarea
-              rows={5}
+              rows={9}
               value={messageText}
               onChange={(e) => onMessageTextChange(e.target.value)}
               placeholder="Type your WhatsApp campaign message here..."
-              className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition resize-y"
+              className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-sans text-slate-900 leading-relaxed placeholder-slate-400 focus:outline-none focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition resize-y"
             />
             <div className="absolute right-3 bottom-3 text-[11px] text-slate-400 font-mono">
               {messageText.length} chars
@@ -166,7 +183,7 @@ export default function MessageComposer({
                   <button
                     key={idx}
                     onClick={() => onMessageTextChange(preset.content)}
-                    className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-200 text-xs transition"
+                    className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg border border-slate-200 text-xs transition"
                   >
                     {preset.title}
                   </button>
@@ -221,8 +238,8 @@ export default function MessageComposer({
                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-brand-500"
               >
                 <option value="en_US">English (US) - en_US</option>
-                <option value="es">Spanish - es</option>
                 <option value="hi">Hindi - hi</option>
+                <option value="es">Spanish - es</option>
               </select>
             </div>
           </div>

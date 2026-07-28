@@ -5,7 +5,7 @@ import LoginPage from '@/components/LoginPage';
 import Sidebar, { NavTab } from '@/components/Sidebar';
 import DashboardOverview from '@/components/DashboardOverview';
 import ContactUploader, { ParsedContact } from '@/components/ContactUploader';
-import MessageComposer from '@/components/MessageComposer';
+import MessageComposer, { AEROPEAK_DEFAULT_MESSAGE } from '@/components/MessageComposer';
 import WhatsAppPreview from '@/components/WhatsAppPreview';
 import CampaignMonitor from '@/components/CampaignMonitor';
 import RepliesInbox from '@/components/RepliesInbox';
@@ -32,9 +32,7 @@ export default function Home() {
   // Campaign State
   const [contacts, setContacts] = useState<ParsedContact[]>([]);
   const [messageType, setMessageType] = useState<'text' | 'template'>('text');
-  const [messageText, setMessageText] = useState(
-    'Hello {name}! 👋 Thank you for connecting with us. Check out our latest updates!'
-  );
+  const [messageText, setMessageText] = useState(AEROPEAK_DEFAULT_MESSAGE);
   const [templateName, setTemplateName] = useState('hello_world');
   const [templateLanguage, setTemplateLanguage] = useState('en_US');
   const [templateParams, setTemplateParams] = useState<string[]>([]);
