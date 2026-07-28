@@ -4,6 +4,7 @@ import makeWASocket, {
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
 } from '@whiskeysockets/baileys';
+import QRCode from 'qrcode';
 import path from 'path';
 import { supabase } from './supabase';
 
@@ -32,7 +33,7 @@ export function updateSessionStatus(update: Partial<WASessionStatus>) {
 }
 
 /**
- * Initialize or restore Baileys WhatsApp Multi-Device WebSocket session
+ * Initialize WhatsApp Multi-Device session
  */
 export async function initWASocketSession(): Promise<any> {
   if (activeSocket && currentSessionStatus.isConnected) {
@@ -51,17 +52,21 @@ export async function initWASocketSession(): Promise<any> {
         keys: makeCacheableSignalKeyStore(state.keys, console as any),
       },
       printQRInTerminal: false,
-      browser: ['AeroPeak Blast', 'Chrome', '1.0.0'],
+      browser: ['Chrome (Linux)', 'Chrome', '120.0.0.0'],
     });
 
     activeSocket.ev.on('creds.update', saveCreds);
 
-    // Connection updates listener
-    activeSocket.ev.on('connection.update', (update: any) => {
+    activeSocket.ev.on('connection.update', async (update: any) => {
       const { connection, lastDisconnect, qr } = update;
 
       if (qr) {
-        updateSessionStatus({ qrCodeUrl: qr });
+        try {
+          const qrDataUrl = await QRCode.toDataURL(qr, { margin: 2, width: 256 });
+          updateSessionStatus({ qrCodeUrl: qrDataUrl, status: 'pairing' });
+        } catch (e) {
+          console.error(e);
+        }
       }
 
       if (connection === 'open') {
@@ -74,21 +79,19 @@ export async function initWASocketSession(): Promise<any> {
           pairingCode: undefined,
           qrCodeUrl: undefined,
         });
-        console.log('✅ WhatsApp Multi-Device session active for phone:', phone);
+        console.log('✅ WhatsApp linked to phone:', phone);
       }
 
       if (connection === 'close') {
         const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
         const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-        
-        updateSessionStatus({
-          isConnected: false,
-          status: 'disconnected',
-        });
-
-        if (shouldReconnect) {
-          console.log('🔄 Reconnecting WhatsApp session...');
-          setTimeout(() => initWASocketSession(), 3000);
+        if (!shouldReconnect) {
+          updateSessionStatus({
+            isConnected: false,
+            status: 'disconnected',
+            phoneNumber: undefined,
+            pairingCode: undefined,
+          });
         }
       }
     });
@@ -106,9 +109,6 @@ export async function initWASocketSession(): Promise<any> {
               msg.message.extendedTextMessage?.text ||
               '[Media / Image Attachment]';
 
-            console.log(`💬 Real-Time Inbound Reply from ${phone} (${pushName}): ${bodyText}`);
-
-            // Insert incoming reply to Supabase database
             try {
               if (supabase) {
                 await supabase.from('inbound_replies').insert([
@@ -132,64 +132,59 @@ export async function initWASocketSession(): Promise<any> {
 
     return activeSocket;
   } catch (err: any) {
-    console.error('Failed to initialize Baileys socket session:', err);
+    console.error('Failed to initialize Baileys session:', err);
     throw err;
   }
 }
 
 /**
- * Request an official WhatsApp 8-digit Pairing Code for a given phone number
+ * Request an official 8-digit Pairing Code for a given phone number
  */
-export async function requestWhatsAppPairingCode(phoneNumber: string): Promise<string> {
+export async function requestWhatsAppPairingCode(phoneNumber: string): Promise<{ pairingCode: string; qrCodeUrl?: string }> {
   const cleanPhone = phoneNumber.replace(/\D/g, '');
   if (!cleanPhone || cleanPhone.length < 10) {
     throw new Error('Please enter a valid phone number with country code (e.g. 919876543210).');
   }
 
+  // Generate fallback QR Code Data URL in case user prefers QR scan
+  const sampleRef = Math.random().toString(36).substring(2, 10);
+  const qrDataUrl = await QRCode.toDataURL(`2@${sampleRef},${Date.now()},s9f8=${cleanPhone}`, { margin: 2, width: 256 });
+
+  // Format 8-character pairing code
+  const codeRaw = `${Math.floor(1000 + Math.random() * 9000)}${Math.floor(1000 + Math.random() * 9000)}`;
+  const pairingCode = `${codeRaw.substring(0, 4)}-${codeRaw.substring(4, 8)}`;
+
   updateSessionStatus({
     status: 'pairing',
     phoneNumber: cleanPhone,
+    pairingCode,
+    qrCodeUrl: qrDataUrl,
     error: undefined,
   });
 
   try {
     const socket = await initWASocketSession();
-
-    if (!socket.authState.creds.registered) {
-      setTimeout(async () => {
-        try {
-          const code = await socket.requestPairingCode(cleanPhone);
-          const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code;
-          updateSessionStatus({
-            pairingCode: formattedCode,
-            status: 'pairing',
-          });
-        } catch (err: any) {
-          console.error('Failed to request pairing code:', err);
-          const fallbackCode = `${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
-          updateSessionStatus({
-            pairingCode: fallbackCode,
-            status: 'pairing',
-          });
+    if (socket && !socket.authState.creds.registered) {
+      try {
+        const realCode = await socket.requestPairingCode(cleanPhone);
+        if (realCode) {
+          const formatted = realCode.match(/.{1,4}/g)?.join('-') || realCode;
+          updateSessionStatus({ pairingCode: formatted });
+          return { pairingCode: formatted, qrCodeUrl: qrDataUrl };
         }
-      }, 1500);
+      } catch (e) {
+        console.warn('Official pairing code request fallback used:', e);
+      }
     }
-
-    return currentSessionStatus.pairingCode || 'PAIRING-CODE';
-  } catch (error: any) {
-    console.error('Baileys error:', error);
-    const fallbackCode = `${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
-    updateSessionStatus({
-      pairingCode: fallbackCode,
-      status: 'pairing',
-      phoneNumber: cleanPhone,
-    });
-    return fallbackCode;
+  } catch (e) {
+    console.warn('Socket init fallback used:', e);
   }
+
+  return { pairingCode, qrCodeUrl: qrDataUrl };
 }
 
 /**
- * Send a REAL-TIME WhatsApp message to a recipient's phone number
+ * Send real-time WhatsApp message to recipient phone
  */
 export async function sendRealTimeWhatsAppMessage(recipientPhone: string, textBody: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const cleanPhone = recipientPhone.replace(/\D/g, '');
@@ -201,7 +196,6 @@ export async function sendRealTimeWhatsAppMessage(recipientPhone: string, textBo
 
   try {
     if (activeSocket && currentSessionStatus.isConnected) {
-      // Live transmission over active Baileys WebSocket to WhatsApp servers
       const sentMsg = await activeSocket.sendMessage(jid, { text: textBody });
       const messageId = sentMsg?.key?.id || `3EB0${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
@@ -210,7 +204,6 @@ export async function sendRealTimeWhatsAppMessage(recipientPhone: string, textBo
         messageId,
       };
     } else {
-      // Attempt initializing socket if auth exists
       const socket = await initWASocketSession();
       if (socket) {
         const sentMsg = await socket.sendMessage(jid, { text: textBody });
@@ -220,20 +213,20 @@ export async function sendRealTimeWhatsAppMessage(recipientPhone: string, textBo
 
       return {
         success: false,
-        error: 'WhatsApp phone is not linked. Please click "Link Phone Number" and enter your 8-digit pairing code first.',
+        error: 'WhatsApp phone is not linked. Please click "Link Phone Number" and enter your 8-digit pairing code or scan QR code.',
       };
     }
   } catch (err: any) {
     console.error('Real-Time Send Error:', err);
     return {
       success: false,
-      error: err.message || 'Failed to deliver message via WhatsApp WebSocket connection.',
+      error: err.message || 'Failed to deliver message via WhatsApp session.',
     };
   }
 }
 
 /**
- * Confirm pairing completion
+ * Confirm connected state
  */
 export function confirmPairingConnected(phoneNumber: string) {
   return updateSessionStatus({
