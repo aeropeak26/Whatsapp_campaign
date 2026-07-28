@@ -1,77 +1,87 @@
 'use client';
 
 import React from 'react';
-import { MessageSquare, Settings, Database, Sparkles, ShieldCheck, Zap } from 'lucide-react';
+import { MessageSquare, Settings, Database, Sparkles, ShieldCheck, Zap, QrCode, Smartphone } from 'lucide-react';
+import { LinkedDeviceState } from '@/lib/wa-device';
 
 interface HeaderProps {
   onOpenSettings: () => void;
+  onOpenLinkDevice: () => void;
   isApiConfigured: boolean;
-  apiPhoneDisplay?: string;
+  deviceState: LinkedDeviceState;
   totalSentCount: number;
 }
 
-export default function Header({ onOpenSettings, isApiConfigured, apiPhoneDisplay, totalSentCount }: HeaderProps) {
+export default function Header({
+  onOpenSettings,
+  onOpenLinkDevice,
+  isApiConfigured,
+  deviceState,
+  totalSentCount,
+}: HeaderProps) {
   return (
-    <header className="sticky top-0 z-40 w-full glass-panel border-b border-gray-800 bg-dark-bg/80 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        {/* Brand logo & title */}
-        <div className="flex items-center space-x-3">
-          <div className="relative">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-brand-400 flex items-center justify-center shadow-lg shadow-brand-500/20">
-              <MessageSquare className="w-6 h-6 text-slate-950 font-bold" />
-            </div>
-            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-dark-bg flex items-center justify-center">
-              <Zap className="w-2.5 h-2.5 text-slate-950 fill-current" />
-            </div>
+    <header className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-200 px-6 py-3.5 flex items-center justify-between shadow-2xs">
+      {/* Brand logo & title */}
+      <div className="flex items-center space-x-3">
+        <div className="w-10 h-10 rounded-2xl bg-brand-500 text-white flex items-center justify-center shadow-md shadow-brand-500/20">
+          <MessageSquare className="w-6 h-6 fill-current" />
+        </div>
+        <div>
+          <div className="flex items-center space-x-2">
+            <h1 className="text-lg font-extrabold text-slate-900 tracking-tight">WhatsApp Blast</h1>
+            <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold bg-brand-50 text-brand-700 border border-brand-200">
+              {deviceState.isConnected ? '📱 Linked Device' : 'Meta API Ready'}
+            </span>
           </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h1 className="text-xl font-bold text-white tracking-tight">WhatsApp Blast</h1>
-              <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-semibold bg-brand-500/10 text-brand-400 border border-brand-500/20">
-                Meta Cloud API
-              </span>
-            </div>
-            <p className="text-xs text-gray-400">Bulk Campaign Manager & Automated Dispatcher</p>
-          </div>
+          <p className="text-xs text-slate-500 font-medium">Enterprise Marketing &amp; Direct Phone Dispatcher</p>
+        </div>
+      </div>
+
+      {/* Connection Buttons */}
+      <div className="flex items-center space-x-3">
+        {/* Supabase Badge */}
+        <div className="hidden lg:flex items-center space-x-1.5 text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-1.5 rounded-xl font-medium">
+          <Database className="w-3.5 h-3.5 text-emerald-600" />
+          <span>Supabase DB Connected</span>
         </div>
 
-        {/* Status Indicators & Action Buttons */}
-        <div className="flex items-center space-x-4">
-          {/* Supabase Connected Badge */}
-          <div className="hidden md:flex items-center space-x-1.5 text-xs bg-emerald-950/40 border border-emerald-800/40 text-emerald-400 px-3 py-1.5 rounded-lg">
-            <Database className="w-3.5 h-3.5" />
-            <span>Supabase Database Connected</span>
-          </div>
-
-          {/* Messages Sent Counter */}
-          <div className="hidden sm:flex items-center space-x-2 text-xs bg-gray-800/60 border border-gray-700/60 px-3 py-1.5 rounded-lg text-gray-300">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>Dispatched: <strong className="text-white font-semibold">{totalSentCount}</strong></span>
-          </div>
-
-          {/* API Configuration Status */}
-          <button
-            onClick={onOpenSettings}
-            className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              isApiConfigured
-                ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20'
-                : 'bg-amber-500/10 border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 animate-pulse'
-            }`}
-          >
-            {isApiConfigured ? (
-              <>
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span className="hidden sm:inline">{apiPhoneDisplay || 'WhatsApp API Connected'}</span>
-                <span className="sm:hidden">API Ready</span>
-              </>
-            ) : (
-              <>
-                <Settings className="w-4 h-4 text-amber-400" />
-                <span>Configure WhatsApp API</span>
-              </>
-            )}
-          </button>
+        {/* Counter */}
+        <div className="hidden sm:flex items-center space-x-2 text-xs bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-slate-700 font-semibold">
+          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+          <span>Sent: <strong>{totalSentCount}</strong></span>
         </div>
+
+        {/* 1. Link Device Button (QR Code Scan) */}
+        <button
+          onClick={onOpenLinkDevice}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-2xs border ${
+            deviceState.isConnected
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100'
+              : 'bg-brand-500 text-white hover:bg-brand-600 shadow-md shadow-brand-500/20'
+          }`}
+        >
+          {deviceState.isConnected ? (
+            <>
+              <Smartphone className="w-4 h-4 text-emerald-600" />
+              <span>📱 Linked: +{deviceState.phoneNumber || '919876543210'}</span>
+            </>
+          ) : (
+            <>
+              <QrCode className="w-4 h-4" />
+              <span>Link Device (Scan QR)</span>
+            </>
+          )}
+        </button>
+
+        {/* 2. Meta Cloud API Settings Button */}
+        <button
+          onClick={onOpenSettings}
+          className="px-3 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition flex items-center space-x-1.5"
+          title="Meta Cloud API Settings"
+        >
+          <Settings className="w-3.5 h-3.5 text-slate-500" />
+          <span className="hidden md:inline">Meta API</span>
+        </button>
       </div>
     </header>
   );

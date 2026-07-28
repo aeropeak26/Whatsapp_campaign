@@ -3,7 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import LoginPage from '@/components/LoginPage';
 import Sidebar, { NavTab } from '@/components/Sidebar';
+import Header from '@/components/Header';
 import DashboardOverview from '@/components/DashboardOverview';
+import ApiConfigModal from '@/components/ApiConfigModal';
+import LinkDeviceModal from '@/components/LinkDeviceModal';
 import ContactUploader, { ParsedContact } from '@/components/ContactUploader';
 import MessageComposer, { AEROPEAK_DEFAULT_MESSAGE } from '@/components/MessageComposer';
 import WhatsAppPreview from '@/components/WhatsAppPreview';
@@ -12,16 +15,23 @@ import RepliesInbox from '@/components/RepliesInbox';
 import SavedTemplates from '@/components/SavedTemplates';
 import CampaignHistory from '@/components/CampaignHistory';
 import DatabaseSetupBanner from '@/components/DatabaseSetupBanner';
-import ApiConfigModal from '@/components/ApiConfigModal';
 import { WhatsAppConfig } from '@/lib/whatsapp';
+import { LinkedDeviceState } from '@/lib/wa-device';
 import { supabase } from '@/lib/supabase';
-import { Settings, ShieldCheck, Key, RefreshCw, HelpCircle } from 'lucide-react';
+import { Settings, ShieldCheck, Key, RefreshCw, HelpCircle, QrCode, Smartphone } from 'lucide-react';
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isLinkDeviceModalOpen, setIsLinkDeviceModalOpen] = useState(false);
   const [totalSentCount, setTotalSentCount] = useState(0);
+
+  // WhatsApp Linked Device Connection State
+  const [deviceState, setDeviceState] = useState<LinkedDeviceState>({
+    isConnected: false,
+    status: 'disconnected',
+  });
 
   // WhatsApp API Configuration
   const [config, setConfig] = useState<WhatsAppConfig>({
@@ -106,43 +116,14 @@ export default function Home() {
 
       {/* Main Workspace Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        {/* Top Sticky Header */}
-        <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-extrabold text-slate-900 capitalize tracking-tight">
-              {activeTab === 'dashboard' && 'Workspace Dashboard'}
-              {activeTab === 'campaign' && 'New WhatsApp Campaign Form'}
-              {activeTab === 'replies' && 'Customer Replies & Chat Timeline'}
-              {activeTab === 'templates' && 'Message Template Library'}
-              {activeTab === 'history' && 'Campaign Execution Logs'}
-              {activeTab === 'settings' && 'Meta Cloud API & Webhook Settings'}
-            </h2>
-            <p className="text-xs text-slate-500 font-medium">WhatsApp Business Marketing Hub</p>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => setIsSettingsModalOpen(true)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 border ${
-                isApiConfigured
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                  : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 animate-pulse'
-              }`}
-            >
-              {isApiConfigured ? (
-                <>
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  <span>Meta Cloud API Connected</span>
-                </>
-              ) : (
-                <>
-                  <Settings className="w-4 h-4 text-amber-600" />
-                  <span>Configure Meta Credentials</span>
-                </>
-              )}
-            </button>
-          </div>
-        </header>
+        {/* Top Header */}
+        <Header
+          onOpenSettings={() => setIsSettingsModalOpen(true)}
+          onOpenLinkDevice={() => setIsLinkDeviceModalOpen(true)}
+          isApiConfigured={isApiConfigured}
+          deviceState={deviceState}
+          totalSentCount={totalSentCount}
+        />
 
         {/* Dynamic Tab Body */}
         <main className="p-6 space-y-6 max-w-7xl w-full mx-auto">
@@ -198,7 +179,9 @@ export default function Home() {
                 templateLanguage={templateLanguage}
                 templateParams={templateParams}
                 config={config}
+                deviceState={deviceState}
                 onOpenSettings={() => setIsSettingsModalOpen(true)}
+                onOpenLinkDevice={() => setIsLinkDeviceModalOpen(true)}
                 onIncrementTotalSent={() => setTotalSentCount((prev) => prev + 1)}
               />
             </div>
@@ -285,12 +268,20 @@ export default function Home() {
         </main>
       </div>
 
-      {/* Settings Modal */}
+      {/* API Credentials Modal */}
       <ApiConfigModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
         config={config}
         onSave={handleSaveConfig}
+      />
+
+      {/* Link Device QR Code Modal */}
+      <LinkDeviceModal
+        isOpen={isLinkDeviceModalOpen}
+        onClose={() => setIsLinkDeviceModalOpen(false)}
+        deviceState={deviceState}
+        onStateChange={setDeviceState}
       />
     </div>
   );

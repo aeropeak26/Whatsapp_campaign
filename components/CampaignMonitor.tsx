@@ -7,6 +7,8 @@ import { ParsedContact } from './ContactUploader';
 import { WhatsAppConfig } from '@/lib/whatsapp';
 import { supabase } from '@/lib/supabase';
 
+import { LinkedDeviceState } from '@/lib/wa-device';
+
 interface CampaignMonitorProps {
   contacts: ParsedContact[];
   messageType: 'text' | 'template';
@@ -15,7 +17,9 @@ interface CampaignMonitorProps {
   templateLanguage: string;
   templateParams: string[];
   config: WhatsAppConfig;
+  deviceState?: LinkedDeviceState;
   onOpenSettings: () => void;
+  onOpenLinkDevice: () => void;
   onIncrementTotalSent: () => void;
 }
 
@@ -36,7 +40,9 @@ export default function CampaignMonitor({
   templateLanguage,
   templateParams,
   config,
+  deviceState,
   onOpenSettings,
+  onOpenLinkDevice,
   onIncrementTotalSent,
 }: CampaignMonitorProps) {
   const validContacts = contacts.filter((c) => c.isValid);
@@ -68,8 +74,11 @@ export default function CampaignMonitor({
   const progressPercent = totalCount > 0 ? Math.round(((sentCount + failedCount) / totalCount) * 100) : 0;
 
   const handleStartCampaign = async () => {
-    if (!config.phoneNumberId || !config.accessToken) {
-      onOpenSettings();
+    // Determine connection mode
+    const isDeviceActive = Boolean(deviceState?.isConnected);
+
+    if (!isDeviceActive && (!config.phoneNumberId || !config.accessToken)) {
+      onOpenLinkDevice();
       return;
     }
 
@@ -127,29 +136,47 @@ export default function CampaignMonitor({
       textBody = textBody.replace(/\{phone\}/gi, `+${item.phone}`);
 
       try {
-        const response = await fetch('/api/send-message', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            recipientPhone: item.phone,
-            messageType,
-            textBody,
-            templateName,
-            templateLanguage,
-            templateParams,
-            config,
-            campaignId: newCampaignId,
-          }),
-        });
+        let result: any = { success: false };
 
-        const result = await response.json();
+        if (isDeviceActive) {
+          // Send via WhatsApp Linked Device session
+          const response = await fetch('/api/wa-device', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'send_message',
+              recipientPhone: item.phone,
+              messageText: textBody,
+              campaignId: newCampaignId,
+            }),
+          });
+          result = await response.json();
+        } else {
+          // Send via Meta WhatsApp Business Cloud API
+          const response = await fetch('/api/send-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              recipientPhone: item.phone,
+              messageType,
+              textBody,
+              templateName,
+              templateLanguage,
+              templateParams,
+              config,
+              campaignId: newCampaignId,
+            }),
+          });
+          result = await response.json();
+        }
+
         const timeStr = new Date().toLocaleTimeString();
 
         if (result.success) {
           setStatuses((prev) =>
             prev.map((s, idx) =>
               idx === i
-                ? { ...s, status: 'sent', messageId: result.messageId, time: timeStr }
+                ? { ...s, status: 'sent', messageId: result.messageId || 'sent_device', time: timeStr }
                 : s
             )
           );
