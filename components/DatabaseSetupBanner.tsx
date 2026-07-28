@@ -44,15 +44,25 @@ CREATE TABLE IF NOT EXISTS public.inbound_replies (
     is_read BOOLEAN DEFAULT false
 );
 
+CREATE TABLE IF NOT EXISTS public.settings (
+    id TEXT PRIMARY KEY DEFAULT 'default',
+    phone_number_id TEXT NOT NULL,
+    access_token TEXT NOT NULL,
+    api_version TEXT DEFAULT 'v19.0',
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 ALTER TABLE public.campaigns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inbound_replies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow public read write on campaigns" ON public.campaigns FOR ALL USING (true);
 CREATE POLICY "Allow public read write on templates" ON public.templates FOR ALL USING (true);
 CREATE POLICY "Allow public read write on logs" ON public.logs FOR ALL USING (true);
 CREATE POLICY "Allow public read write on inbound_replies" ON public.inbound_replies FOR ALL USING (true);
+CREATE POLICY "Allow public read write on settings" ON public.settings FOR ALL USING (true);
 `;
 
 export default function DatabaseSetupBanner() {

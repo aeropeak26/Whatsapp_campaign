@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Key, PhoneCall, CheckCircle2, AlertCircle, RefreshCw, ExternalLink, HelpCircle } from 'lucide-react';
+import { X, Key, PhoneCall, CheckCircle2, AlertCircle, RefreshCw, ExternalLink, HelpCircle, Database } from 'lucide-react';
 import { WhatsAppConfig } from '@/lib/whatsapp';
+import { supabase } from '@/lib/supabase';
 
 interface ApiConfigModalProps {
   isOpen: boolean;
@@ -54,9 +55,26 @@ export default function ApiConfigModal({ isOpen, onClose, config, onSave }: ApiC
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ phoneNumberId, accessToken, apiVersion });
+    const newConfig = { phoneNumberId, accessToken, apiVersion };
+
+    // Save to Supabase DB settings table if available
+    try {
+      if (supabase) {
+        await supabase.from('settings').upsert({
+          id: 'default',
+          phone_number_id: phoneNumberId,
+          access_token: accessToken,
+          api_version: apiVersion,
+          updated_at: new Date().toISOString(),
+        });
+      }
+    } catch (dbErr) {
+      console.warn('Supabase settings upsert skipped:', dbErr);
+    }
+
+    onSave(newConfig);
     onClose();
   };
 

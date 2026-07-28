@@ -14,6 +14,7 @@ import CampaignHistory from '@/components/CampaignHistory';
 import DatabaseSetupBanner from '@/components/DatabaseSetupBanner';
 import ApiConfigModal from '@/components/ApiConfigModal';
 import { WhatsAppConfig } from '@/lib/whatsapp';
+import { supabase } from '@/lib/supabase';
 import { Settings, ShieldCheck, Key, RefreshCw, HelpCircle } from 'lucide-react';
 
 export default function Home() {
@@ -37,7 +38,7 @@ export default function Home() {
   const [templateLanguage, setTemplateLanguage] = useState('en_US');
   const [templateParams, setTemplateParams] = useState<string[]>([]);
 
-  // Check auth and local configuration on mount
+  // Check auth and local/Supabase configuration on mount
   useEffect(() => {
     const authSession = localStorage.getItem('wa_blast_auth');
     if (authSession === 'true') {
@@ -52,6 +53,28 @@ export default function Home() {
         console.error(e);
       }
     }
+
+    // Attempt loading saved credentials from Supabase DB
+    async function loadSupabaseSettings() {
+      try {
+        if (supabase) {
+          const { data } = await supabase.from('settings').select('*').eq('id', 'default').single();
+          if (data && data.phone_number_id && data.access_token) {
+            const fetched = {
+              phoneNumberId: data.phone_number_id,
+              accessToken: data.access_token,
+              apiVersion: data.api_version || 'v19.0',
+            };
+            setConfig(fetched);
+            localStorage.setItem('wa_api_config', JSON.stringify(fetched));
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase settings fetch skipped:', err);
+      }
+    }
+
+    loadSupabaseSettings();
   }, []);
 
   const handleSaveConfig = (newConfig: WhatsAppConfig) => {

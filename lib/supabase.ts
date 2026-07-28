@@ -53,3 +53,11 @@ export interface InboundReply {
   received_at: string;
   is_read?: boolean;
 }
+
+export interface AppSettings {
+  id?: string;
+  phone_number_id: string;
+  access_token: string;
+  api_version?: string;
+  updated_at?: string;
+}
