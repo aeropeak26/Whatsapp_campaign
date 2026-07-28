@@ -1,24 +1,16 @@
 'use client';
 
 import React from 'react';
-import { MessageSquare, Settings, Database, Sparkles, ShieldCheck, Zap, QrCode, Smartphone } from 'lucide-react';
-import { LinkedDeviceState } from '@/lib/wa-device';
+import { MessageSquare, Database, Sparkles, Smartphone, KeyRound } from 'lucide-react';
+import { WASessionStatus } from '@/lib/wa-baileys';
 
 interface HeaderProps {
-  onOpenSettings: () => void;
   onOpenLinkDevice: () => void;
-  isApiConfigured: boolean;
-  deviceState: LinkedDeviceState;
+  sessionStatus: WASessionStatus;
   totalSentCount: number;
 }
 
-export default function Header({
-  onOpenSettings,
-  onOpenLinkDevice,
-  isApiConfigured,
-  deviceState,
-  totalSentCount,
-}: HeaderProps) {
+export default function Header({ onOpenLinkDevice, sessionStatus, totalSentCount }: HeaderProps) {
   return (
     <header className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-200 px-6 py-3.5 flex items-center justify-between shadow-2xs">
       {/* Brand logo & title */}
@@ -30,7 +22,7 @@ export default function Header({
           <div className="flex items-center space-x-2">
             <h1 className="text-lg font-extrabold text-slate-900 tracking-tight">WhatsApp Blast</h1>
             <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold bg-brand-50 text-brand-700 border border-brand-200">
-              {deviceState.isConnected ? '📱 Linked Device' : 'Meta API Ready'}
+              {sessionStatus.isConnected ? '📱 Phone Connected' : 'Ready to Link'}
             </span>
           </div>
           <p className="text-xs text-slate-500 font-medium">Enterprise Marketing &amp; Direct Phone Dispatcher</p>
@@ -51,36 +43,26 @@ export default function Header({
           <span>Sent: <strong>{totalSentCount}</strong></span>
         </div>
 
-        {/* 1. Link Device Button (QR Code Scan) */}
+        {/* Link WhatsApp Phone Number Button (8-Digit Code OTP) */}
         <button
           onClick={onOpenLinkDevice}
-          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-2xs border ${
-            deviceState.isConnected
+          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition shadow-2xs border ${
+            sessionStatus.isConnected
               ? 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100'
               : 'bg-brand-500 text-white hover:bg-brand-600 shadow-md shadow-brand-500/20'
           }`}
         >
-          {deviceState.isConnected ? (
+          {sessionStatus.isConnected ? (
             <>
               <Smartphone className="w-4 h-4 text-emerald-600" />
-              <span>📱 Linked: +{deviceState.phoneNumber || '919876543210'}</span>
+              <span>📱 Connected: +{sessionStatus.phoneNumber || '919876543210'}</span>
             </>
           ) : (
             <>
-              <QrCode className="w-4 h-4" />
-              <span>Link Device (Scan QR)</span>
+              <KeyRound className="w-4 h-4" />
+              <span>Link Phone Number (8-Digit Code)</span>
             </>
           )}
-        </button>
-
-        {/* 2. Meta Cloud API Settings Button */}
-        <button
-          onClick={onOpenSettings}
-          className="px-3 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition flex items-center space-x-1.5"
-          title="Meta Cloud API Settings"
-        >
-          <Settings className="w-3.5 h-3.5 text-slate-500" />
-          <span className="hidden md:inline">Meta API</span>
         </button>
       </div>
     </header>

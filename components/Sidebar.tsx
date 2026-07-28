@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { LayoutDashboard, Send, MessageCircle, FileText, History, Settings, LogOut, MessageSquare, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Send, MessageCircle, FileText, History, LogOut, MessageSquare, ChevronRight } from 'lucide-react';
 
-export type NavTab = 'dashboard' | 'campaign' | 'replies' | 'templates' | 'history' | 'settings';
+export type NavTab = 'dashboard' | 'campaign' | 'replies' | 'templates' | 'history';
 
 interface SidebarProps {
   activeTab: NavTab;
@@ -19,7 +19,6 @@ export default function Sidebar({ activeTab, onTabChange, onLogout, unreadReplie
     { id: 'replies', label: 'Replies', icon: MessageCircle, badge: unreadRepliesCount },
     { id: 'templates', label: 'Templates', icon: FileText },
     { id: 'history', label: 'History', icon: History },
-    { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
   return (

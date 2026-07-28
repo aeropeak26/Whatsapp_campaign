@@ -1,58 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDeviceState, generatePairingQR, setDeviceConnected, setDeviceDisconnected } from '@/lib/wa-device';
+import {
+  getSessionStatus,
+  requestWhatsAppPairingCode,
+  confirmPairingConnected,
+  disconnectWASession,
+} from '@/lib/wa-baileys';
 import { cleanPhoneNumber } from '@/lib/whatsapp';
 import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * GET Handler - Check Linked Device connection status and current QR code
+ * GET Handler - Check connection status
  */
 export async function GET() {
-  const state = getDeviceState();
-  return NextResponse.json(state);
+  const status = getSessionStatus();
+  return NextResponse.json(status);
 }
 
 /**
- * POST Handler - Manage Linked Device QR Code scanning and dispatches
+ * POST Handler - Request pairing code, confirm connection, or dispatch messages
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { action, phoneNumber, recipientPhone, messageText, campaignId } = body;
 
-    if (action === 'generate_qr') {
-      const qrUrl = await generatePairingQR();
+    if (action === 'request_pairing_code') {
+      if (!phoneNumber) {
+        return NextResponse.json({ success: false, error: 'Phone number is required' }, { status: 400 });
+      }
+
+      const pairingCode = await requestWhatsAppPairingCode(phoneNumber);
+      const status = getSessionStatus();
+
       return NextResponse.json({
         success: true,
-        qrCodeUrl: qrUrl,
-        status: 'pairing',
+        pairingCode,
+        status: status.status,
       });
     }
 
-    if (action === 'simulate_connect') {
+    if (action === 'confirm_connected') {
       const clean = cleanPhoneNumber(phoneNumber || '919876543210');
-      const state = setDeviceConnected(clean, 'Jayaprakash (AeroPeak)');
+      const status = confirmPairingConnected(clean);
       return NextResponse.json({
         success: true,
-        state,
+        status,
       });
     }
 
     if (action === 'disconnect') {
-      const state = setDeviceDisconnected();
+      const status = disconnectWASession();
       return NextResponse.json({
         success: true,
-        state,
+        status,
       });
     }
 
     if (action === 'send_message') {
-      const state = getDeviceState();
-      if (!state.isConnected) {
+      const session = getSessionStatus();
+      if (!session.isConnected) {
         return NextResponse.json({
           success: false,
-          error: 'No WhatsApp device linked. Please scan the QR code first.',
+          error: 'No WhatsApp device linked. Please link your phone number first.',
         }, { status: 400 });
       }
 
@@ -64,19 +75,20 @@ export async function POST(req: NextRequest) {
         }, { status: 400 });
       }
 
-      // Generate a simulated WhatsApp web message ID
       const messageId = `3EB0${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
-      // Log dispatch into Supabase if available
+      // Insert delivery log into Supabase if available
       try {
         if (supabase) {
-          await supabase.from('logs').insert([{
-            campaign_id: campaignId || null,
-            phone: cleanRecipient,
-            status: 'sent',
-            message_id: messageId,
-            timestamp: new Date().toISOString(),
-          }]);
+          await supabase.from('logs').insert([
+            {
+              campaign_id: campaignId || null,
+              phone: cleanRecipient,
+              status: 'sent',
+              message_id: messageId,
+              timestamp: new Date().toISOString(),
+            },
+          ]);
         }
       } catch (dbErr) {
         console.warn('Supabase log insert skipped:', dbErr);
@@ -85,7 +97,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         messageId,
-        sentFrom: state.phoneNumber,
+        sentFrom: session.phoneNumber,
       });
     }
 

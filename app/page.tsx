@@ -5,7 +5,6 @@ import LoginPage from '@/components/LoginPage';
 import Sidebar, { NavTab } from '@/components/Sidebar';
 import Header from '@/components/Header';
 import DashboardOverview from '@/components/DashboardOverview';
-import ApiConfigModal from '@/components/ApiConfigModal';
 import LinkDeviceModal from '@/components/LinkDeviceModal';
 import ContactUploader, { ParsedContact } from '@/components/ContactUploader';
 import MessageComposer, { AEROPEAK_DEFAULT_MESSAGE } from '@/components/MessageComposer';
@@ -15,32 +14,29 @@ import RepliesInbox from '@/components/RepliesInbox';
 import SavedTemplates from '@/components/SavedTemplates';
 import CampaignHistory from '@/components/CampaignHistory';
 import DatabaseSetupBanner from '@/components/DatabaseSetupBanner';
+import { WASessionStatus } from '@/lib/wa-baileys';
 import { WhatsAppConfig } from '@/lib/whatsapp';
-import { LinkedDeviceState } from '@/lib/wa-device';
-import { supabase } from '@/lib/supabase';
-import { Settings, ShieldCheck, Key, RefreshCw, HelpCircle, QrCode, Smartphone } from 'lucide-react';
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isLinkDeviceModalOpen, setIsLinkDeviceModalOpen] = useState(false);
   const [totalSentCount, setTotalSentCount] = useState(0);
 
-  // WhatsApp Linked Device Connection State
-  const [deviceState, setDeviceState] = useState<LinkedDeviceState>({
+  // WhatsApp Linked Session State
+  const [sessionStatus, setSessionStatus] = useState<WASessionStatus>({
     isConnected: false,
     status: 'disconnected',
   });
 
-  // WhatsApp API Configuration
-  const [config, setConfig] = useState<WhatsAppConfig>({
-    phoneNumberId: '',
-    accessToken: '',
+  // Default WhatsApp API config object for fallbacks
+  const [config] = useState<WhatsAppConfig>({
+    phoneNumberId: 'default',
+    accessToken: 'default',
     apiVersion: 'v19.0',
   });
 
-  // Campaign State
+  // Campaign Form State
   const [contacts, setContacts] = useState<ParsedContact[]>([]);
   const [messageType, setMessageType] = useState<'text' | 'template'>('text');
   const [messageText, setMessageText] = useState(AEROPEAK_DEFAULT_MESSAGE);
@@ -48,61 +44,34 @@ export default function Home() {
   const [templateLanguage, setTemplateLanguage] = useState('en_US');
   const [templateParams, setTemplateParams] = useState<string[]>([]);
 
-  // Check auth and local/Supabase configuration on mount
+  // Check auth & session status on mount
   useEffect(() => {
     const authSession = localStorage.getItem('wa_blast_auth');
     if (authSession === 'true') {
       setIsAuthenticated(true);
     }
 
-    const savedConfig = localStorage.getItem('wa_api_config');
-    if (savedConfig) {
+    async function checkSession() {
       try {
-        setConfig(JSON.parse(savedConfig));
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    // Attempt loading saved credentials from Supabase DB
-    async function loadSupabaseSettings() {
-      try {
-        if (supabase) {
-          const { data } = await supabase.from('settings').select('*').eq('id', 'default').single();
-          if (data && data.phone_number_id && data.access_token) {
-            const fetched = {
-              phoneNumberId: data.phone_number_id,
-              accessToken: data.access_token,
-              apiVersion: data.api_version || 'v19.0',
-            };
-            setConfig(fetched);
-            localStorage.setItem('wa_api_config', JSON.stringify(fetched));
-          }
-        }
+        const res = await fetch('/api/wa-device');
+        const data = await res.json();
+        if (data) setSessionStatus(data);
       } catch (err) {
-        console.warn('Supabase settings fetch skipped:', err);
+        console.warn(err);
       }
     }
 
-    loadSupabaseSettings();
+    checkSession();
   }, []);
-
-  const handleSaveConfig = (newConfig: WhatsAppConfig) => {
-    setConfig(newConfig);
-    localStorage.setItem('wa_api_config', JSON.stringify(newConfig));
-  };
 
   const handleLogout = () => {
     localStorage.removeItem('wa_blast_auth');
     setIsAuthenticated(false);
   };
 
-  // Guard: If not authenticated, render Login Page
   if (!isAuthenticated) {
     return <LoginPage onLoginSuccess={() => setIsAuthenticated(true)} />;
   }
-
-  const isApiConfigured = Boolean(config.phoneNumberId && config.accessToken);
 
   return (
     <div className="min-h-screen bg-slate-50 flex text-slate-900 font-sans">
@@ -118,10 +87,8 @@ export default function Home() {
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* Top Header */}
         <Header
-          onOpenSettings={() => setIsSettingsModalOpen(true)}
           onOpenLinkDevice={() => setIsLinkDeviceModalOpen(true)}
-          isApiConfigured={isApiConfigured}
-          deviceState={deviceState}
+          sessionStatus={sessionStatus}
           totalSentCount={totalSentCount}
         />
 
@@ -179,8 +146,8 @@ export default function Home() {
                 templateLanguage={templateLanguage}
                 templateParams={templateParams}
                 config={config}
-                deviceState={deviceState}
-                onOpenSettings={() => setIsSettingsModalOpen(true)}
+                deviceState={sessionStatus as any}
+                onOpenSettings={() => setIsLinkDeviceModalOpen(true)}
                 onOpenLinkDevice={() => setIsLinkDeviceModalOpen(true)}
                 onIncrementTotalSent={() => setTotalSentCount((prev) => prev + 1)}
               />
@@ -202,86 +169,15 @@ export default function Home() {
 
           {/* Tab 5: History */}
           {activeTab === 'history' && <CampaignHistory />}
-
-          {/* Tab 6: Settings */}
-          {activeTab === 'settings' && (
-            <div className="space-y-6">
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                <div className="flex items-center space-x-3 border-b border-slate-100 pb-3">
-                  <Key className="w-5 h-5 text-brand-600" />
-                  <h3 className="text-base font-bold text-slate-900">Meta API &amp; Webhook Credentials</h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      Phone Number ID
-                    </label>
-                    <input
-                      type="text"
-                      value={config.phoneNumberId}
-                      onChange={(e) => setConfig({ ...config, phoneNumberId: e.target.value })}
-                      placeholder="e.g. 104857692348501"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:bg-white focus:border-brand-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      Graph API Version
-                    </label>
-                    <select
-                      value={config.apiVersion || 'v19.0'}
-                      onChange={(e) => setConfig({ ...config, apiVersion: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-brand-500"
-                    >
-                      <option value="v19.0">v19.0 (Latest Standard)</option>
-                      <option value="v18.0">v18.0</option>
-                    </select>
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      System Access Token
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={config.accessToken}
-                      onChange={(e) => setConfig({ ...config, accessToken: e.target.value })}
-                      placeholder="EAAG..."
-                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:bg-white focus:border-brand-500 resize-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => handleSaveConfig(config)}
-                    className="px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs rounded-xl shadow-md shadow-brand-500/20 transition"
-                  >
-                    Save Credentials
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </main>
       </div>
 
-      {/* API Credentials Modal */}
-      <ApiConfigModal
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-        config={config}
-        onSave={handleSaveConfig}
-      />
-
-      {/* Link Device QR Code Modal */}
+      {/* WhatsApp Link Phone Number (8-Digit Code) Modal */}
       <LinkDeviceModal
         isOpen={isLinkDeviceModalOpen}
         onClose={() => setIsLinkDeviceModalOpen(false)}
-        deviceState={deviceState}
-        onStateChange={setDeviceState}
+        sessionStatus={sessionStatus}
+        onStatusChange={setSessionStatus}
       />
     </div>
   );
